@@ -1,5 +1,7 @@
 # MaterialDayjsAdapter
 
+> Fork of [@tabuckner/material-dayjs-adapter](https://github.com/tabuckner/material-dayjs-adapter) with localization added.
+
 An adapter to use [Dayjs]() instead of [MomentJS]() in an effort to [reduce dependency size](#dependency-size-reduction). Feel free to create an issue or submit a PR.
 
 If coming from [@angular/material-moment-adapter](https://github.com/angular/components/tree/master/src/material-moment-adapter), using the default locale and UTC plugins you can reduce your dependency size by *~560kb*
