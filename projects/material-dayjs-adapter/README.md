@@ -41,7 +41,7 @@ Minimal Project with Dayjs Date Adapter
 ## How To Use
 ### Import Module
 ```typescript
-import { MatDayjsDateModule } from '@tabuckner/material-dayjs-adapter';
+import { MatDayjsDateModule } from '@vanrossumict/material-dayjs-adapter';
 
 @NgModule({
  ...
@@ -80,7 +80,7 @@ export class AppComponent {
 
 ### Optionally Provide A Configuration
 ```typescript
-import { MatDayjsDateModule, MAT_DAYJS_DATE_ADAPTER_OPTIONS } from '@tabuckner/material-dayjs-adapter';
+import { MatDayjsDateModule, MAT_DAYJS_DATE_ADAPTER_OPTIONS } from '@vanrossumict/material-dayjs-adapter';
 @NgModule({
   ...
   providers: [
