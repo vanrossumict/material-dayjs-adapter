@@ -1,5 +1,5 @@
 import { Optional, Inject, InjectionToken } from '@angular/core';
-import { DateAdapter, MAT_DATE_LOCALE } from '@angular/material';
+import { DateAdapter, MAT_DATE_LOCALE } from '@angular/material/core';
 import dayjs, { Dayjs } from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import localeData from 'dayjs/plugin/localeData';
@@ -51,7 +51,7 @@ export class DayjsDateAdapter extends DateAdapter<Dayjs> {
   };
 
   constructor(@Optional() @Inject(MAT_DATE_LOCALE) public dateLocale: string,
-              @Optional() @Inject(MAT_DAYJS_DATE_ADAPTER_OPTIONS) private options?: DayJsDateAdapterOptions) {
+    @Optional() @Inject(MAT_DAYJS_DATE_ADAPTER_OPTIONS) private options?: DayJsDateAdapterOptions) {
     super();
 
     // Initialize DayJS-Parser
@@ -197,7 +197,7 @@ export class DayjsDateAdapter extends DateAdapter<Dayjs> {
           }
         }
       }
-      if(value.length === 2) {
+      if (value.length === 2) {
         // user might have typed 01, parse DD only
         const format = 'DD';
         parsed = this.dayJs(value, format, this.locale);
@@ -205,7 +205,7 @@ export class DayjsDateAdapter extends DateAdapter<Dayjs> {
           return parsed;
         }
       }
-      if(value.length === 1) {
+      if (value.length === 1) {
         // user might have typed 1, parse D only
         const format = 'D';
         parsed = this.dayJs(value, format, this.locale);
@@ -287,7 +287,7 @@ export class DayjsDateAdapter extends DateAdapter<Dayjs> {
   invalid(): Dayjs {
     return this.dayJs(null);
   }
-  
+
   private dayJs(input?: any, format?: string, locale?: string): Dayjs {
     return this.shouldUseUtc ? dayjs(input, { format: format, locale: locale, utc: this.shouldUseUtc }, locale).utc() : dayjs(input, { format: format, locale: locale }, locale);
   }
