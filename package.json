@@ -4,7 +4,7 @@
   "scripts": {
     "ng": "ng",
     "start": "npx ng serve --open --port 4207",
-    "build": "npx ng build",
+    "build": "npx ng build --prod",
     "build-watch": "npx ng build material-dayjs-adapter --watch",
     "build-publish": "npx ng build material-dayjs-adapter --prod",
     "test": "npx ng test",
