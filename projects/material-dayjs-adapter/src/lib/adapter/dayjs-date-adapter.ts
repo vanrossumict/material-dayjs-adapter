@@ -3,7 +3,7 @@ import { DateAdapter, MAT_DATE_LOCALE } from '@angular/material/core';
 import dayjs, { Dayjs } from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import localeData from 'dayjs/plugin/localeData';
-import LocalizedFormat from 'dayjs/plugin/localizedFormat';
+import localizedFormat from 'dayjs/plugin/localizedFormat';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 
 
@@ -50,16 +50,21 @@ export class DayjsDateAdapter extends DateAdapter<Dayjs> {
     narrowDaysOfWeek: string[]
   };
 
-  constructor(@Optional() @Inject(MAT_DATE_LOCALE) public dateLocale: string,
-    @Optional() @Inject(MAT_DAYJS_DATE_ADAPTER_OPTIONS) private options?: DayJsDateAdapterOptions) {
+  constructor(
+    @Optional() @Inject(MAT_DATE_LOCALE) public dateLocale: string,
+    @Optional() @Inject(MAT_DAYJS_DATE_ADAPTER_OPTIONS) private options?: DayJsDateAdapterOptions
+  ) {
     super();
 
-    // Initialize DayJS-Parser
+    this.initializeParser(dateLocale);
+  }
+
+  private initializeParser(dateLocale: string) {
     if (this.shouldUseUtc) {
       dayjs.extend(utc);
     }
 
-    dayjs.extend(LocalizedFormat);
+    dayjs.extend(localizedFormat);
     dayjs.extend(customParseFormat);
     dayjs.extend(localeData);
 
@@ -156,7 +161,7 @@ export class DayjsDateAdapter extends DateAdapter<Dayjs> {
       if (value.length === 8) {
         // user might have typed 24012020 or 01242020
         // strip long date format of non-alphabetic characters so we get MMDDYYYY or DDMMYYYY
-        const format = longDateFormat.replace(/[\W_]+/g, "");
+        const format = longDateFormat.replace(/[\W_]+/g, '');
         parsed = this.dayJs(value, format, this.locale);
         if (parsed.isValid()) {
           return parsed;
@@ -289,7 +294,11 @@ export class DayjsDateAdapter extends DateAdapter<Dayjs> {
   }
 
   private dayJs(input?: any, format?: string, locale?: string): Dayjs {
-    return this.shouldUseUtc ? dayjs(input, { format: format, locale: locale, utc: this.shouldUseUtc }, locale).utc() : dayjs(input, { format: format, locale: locale }, locale);
+    if (this.shouldUseUtc) {
+      return dayjs(input, { format, locale, utc: this.shouldUseUtc }, locale).utc();
+    } else {
+      return dayjs(input, { format, locale }, locale);
+    }
   }
 
   private get shouldUseUtc(): boolean {

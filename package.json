@@ -3,13 +3,14 @@
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
-    "start": "ng serve",
-    "build": "ng build",
-    "build:example:prod": "ng build example-material-dayjs-adapter --prod",
-    "test": "ng test",
-    "lint": "ng lint",
+    "start": "npx ng serve --open --port 4207",
+    "build": "npx ng build",
+    "build-watch": "npx ng build material-dayjs-adapter --watch",
+    "build-publish": "npx ng build material-dayjs-adapter --prod",
+    "test": "npx ng test",
+    "lint": "npx ng lint",
     "stats": "yarn build:example:prod --namedChunks --statsJson && webpack-bundle-analyzer dist/example-material-dayjs-adapter/stats-es2015.json",
-    "e2e": "ng e2e"
+    "e2e": "npx ng e2e"
   },
   "private": true,
   "dependencies": {
