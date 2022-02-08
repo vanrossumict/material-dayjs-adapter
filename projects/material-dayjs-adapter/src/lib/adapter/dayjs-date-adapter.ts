@@ -3,9 +3,9 @@ import { DateAdapter, MAT_DATE_LOCALE } from '@angular/material';
 import dayjs, { Dayjs } from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import localeData from 'dayjs/plugin/localeData';
-import LocalizedFormat from 'dayjs/plugin/localizedFormat';
+import localizedFormat from 'dayjs/plugin/localizedFormat';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
-
+import relativeTime from 'dayjs/plugin/relativeTime';
 
 export interface DayJsDateAdapterOptions {
   /**
@@ -29,14 +29,6 @@ export function MAT_DAYJS_DATE_ADAPTER_OPTIONS_FACTORY(): DayJsDateAdapterOption
   };
 }
 
-/** Creates an array and fills it with values. */
-function range<T>(length: number, valueFunction: (index: number) => T): T[] {
-  const valuesArray = Array(length);
-  for (let i = 0; i < length; i++) {
-    valuesArray[i] = valueFunction(i);
-  }
-  return valuesArray;
-}
 
 /** Adapts Dayjs Dates for use with Angular Material. */
 export class DayjsDateAdapter extends DateAdapter<Dayjs> {
@@ -50,18 +42,20 @@ export class DayjsDateAdapter extends DateAdapter<Dayjs> {
     narrowDaysOfWeek: string[]
   };
 
-  constructor(@Optional() @Inject(MAT_DATE_LOCALE) public dateLocale: string,
-              @Optional() @Inject(MAT_DAYJS_DATE_ADAPTER_OPTIONS) private options?: DayJsDateAdapterOptions) {
+  constructor(
+    @Optional() @Inject(MAT_DATE_LOCALE) public dateLocale: string,
+    @Optional() @Inject(MAT_DAYJS_DATE_ADAPTER_OPTIONS) private options?: DayJsDateAdapterOptions
+  ) {
     super();
 
-    // Initalize DayJS-Parser
     if (this.shouldUseUtc) {
       dayjs.extend(utc);
     }
 
-    dayjs.extend(LocalizedFormat);
+    dayjs.extend(localizedFormat);
     dayjs.extend(customParseFormat);
     dayjs.extend(localeData);
+    dayjs.extend(relativeTime);
 
     this.setLocale(dateLocale);
   }
@@ -69,13 +63,13 @@ export class DayjsDateAdapter extends DateAdapter<Dayjs> {
   setLocale(locale: string) {
     super.setLocale(locale);
 
-    let dayJsLocaleData = this.dayJs().localeData();
+    const dayJsLocaleData = this.dayJs().localeData();
     this.localeData = {
       firstDayOfWeek: dayJsLocaleData.firstDayOfWeek(),
       longMonths: dayJsLocaleData.months(),
       shortMonths: dayJsLocaleData.monthsShort(),
-      dates: range(31, (i) => this.createDate(2017, 0, i + 1).format('D')),
-      longDaysOfWeek: range(7, (i) => this.dayJs().set('day', i).format('dddd')),
+      dates: this.range(31, (i) => this.createDate(2017, 0, i + 1).format('D')),
+      longDaysOfWeek: this.range(7, (i) => this.dayJs().set('day', i).format('dddd')),
       shortDaysOfWeek: dayJsLocaleData.weekdaysShort(),
       narrowDaysOfWeek: dayJsLocaleData.weekdaysMin(),
     };
@@ -144,9 +138,111 @@ export class DayjsDateAdapter extends DateAdapter<Dayjs> {
   }
 
   parse(value: any, parseFormat: string): Dayjs | null {
-    if (value && typeof value == 'string') {
-      return this.dayJs(value, dayjs().localeData().longDateFormat(parseFormat), this.locale);
+    if (value && typeof value === 'string') {
+      const longDateFormat = dayjs().localeData().longDateFormat(parseFormat) as string; // MM/DD/YYY or DD-MM-YYYY, etc.
+
+      let parsed = this.dayJs(value, longDateFormat, this.locale);
+
+      if (parsed.isValid()) {
+        // string value is exactly like long date format
+        return parsed;
+      }
+
+      if (value.length === 9) {
+        // user might have typed 1-12-2020 or 12/1/2020
+        // try to parse with D-MM-YYYY or MM/D/YYYY (based on long date format)
+        const formatWithSmallDay = longDateFormat.replace('DD', 'D');
+        parsed = this.dayJs(value, formatWithSmallDay, this.locale);
+        if (parsed.isValid()) {
+          return parsed;
+        }
+
+        // user might have typed 25-1-2020 or 1/25/2020
+        // try to parse with DD-M-YYYY or M/DD/YYYY (based on long date format)
+        const formatWithSmallMonth = longDateFormat.replace('MM', 'M');
+        parsed = this.dayJs(value, formatWithSmallMonth, this.locale);
+        if (parsed.isValid()) {
+          return parsed;
+        }
+      }
+
+      if (value.length === 8) {
+        // user might have typed 24012020 or 01242020
+        // strip long date format of non-alphabetic characters so we get MMDDYYYY or DDMMYYYY
+        const formatWithoutSeparators = longDateFormat.replace(/[\W_]+/g, '');
+        parsed = this.dayJs(value, formatWithoutSeparators, this.locale);
+        if (parsed.isValid()) {
+          return parsed;
+        }
+
+        // user might have typed 1-2-2020 or 2/1/2020
+        // try to parse with D-M-YYYY or M/D/YYYY (based on long date format)
+        const formatWithSmallDayAndMonth = longDateFormat.replace('DD', 'D').replace('MM', 'M');
+        parsed = this.dayJs(value, formatWithSmallDayAndMonth, this.locale);
+        if (parsed.isValid()) {
+          return parsed;
+        }
+      }
+
+      if (value.length < 6 && value.length > 2) {
+        // user might have typed 01/24, 24-01, 1/24, 24/1 or 24-1
+        // try to extract month and day part and parse them with custom format
+        let parts = new Array();
+        if (value.indexOf('/') !== -1) {
+          parts = value.split('/');
+        }
+        if (value.indexOf('-') !== -1) {
+          parts = value.split('-');
+        }
+        if (value.indexOf('.') !== -1) {
+          parts = value.split('.');
+        }
+        if (parts.length === 2) {
+          let dayPart: string;
+          let monthPart: string;
+          if (longDateFormat.startsWith('D')) {
+            dayPart = parts[0];
+            monthPart = parts[1];
+          } else if (parts.length > 1) {
+            monthPart = parts[0];
+            dayPart = parts[1];
+          }
+          if (monthPart.length === 1) {
+            monthPart = 0 + monthPart;
+          }
+          if (dayPart.length === 1) {
+            dayPart = 0 + dayPart;
+          }
+          parsed = this.dayJs(dayPart + monthPart, 'DDMM', this.locale);
+          if (parsed.isValid()) {
+            return parsed;
+          }
+        }
+      }
+
+      if (value.length === 2) {
+        // user might have typed 01, parse DD only
+        const format = 'DD';
+        parsed = this.dayJs(value, format, this.locale);
+        if (parsed.isValid()) {
+          return parsed;
+        }
+      }
+
+      if (value.length === 1) {
+        // user might have typed 1, parse D only
+        const format = 'D';
+        parsed = this.dayJs(value, format, this.locale);
+
+        if (parsed.isValid()) {
+          return parsed;
+        }
+      }
+
+      // not able to parse anything sensible, return something invalid so input can be corrected
+      return this.dayJs(null);
     }
+
     return value ? this.dayJs(value).locale(this.locale) : null;
   }
 
@@ -186,11 +282,10 @@ export class DayjsDateAdapter extends DateAdapter<Dayjs> {
    *     deserialized into a null date (e.g. the empty string), or an invalid date.
    */
   deserialize(value: any): Dayjs | null {
-    let date;
+    let date: string | dayjs.Dayjs;
     if (value instanceof Date) {
       date = this.dayJs(value);
     } else if (this.isDateInstance(value)) {
-      // Note: assumes that cloning also sets the correct locale.
       return this.clone(value);
     }
     if (typeof value === 'string') {
@@ -200,7 +295,7 @@ export class DayjsDateAdapter extends DateAdapter<Dayjs> {
       date = this.dayJs(value).toISOString();
     }
     if (date && this.isValid(date)) {
-      return this.dayJs(date); // NOTE: Is this necessary since Dayjs is immutable and Moment was not?
+      return this.dayJs(date);
     }
     return super.deserialize(value);
   }
@@ -209,7 +304,7 @@ export class DayjsDateAdapter extends DateAdapter<Dayjs> {
     return dayjs.isDayjs(obj);
   }
 
-  isValid(date: Dayjs): boolean {
+  isValid(date: dayjs.Dayjs | string): boolean {
     return this.dayJs(date).isValid();
   }
 
@@ -218,7 +313,15 @@ export class DayjsDateAdapter extends DateAdapter<Dayjs> {
   }
 
   private dayJs(input?: any, format?: string, locale?: string): Dayjs {
-    return this.shouldUseUtc ? dayjs(input, { format: format, locale: locale, utc: this.shouldUseUtc }, locale).utc() : dayjs(input, { format: format, locale: locale }, locale);
+    return dayjs(input, format, locale, true);
+  }
+
+  private range<T>(length: number, valueFunction: (index: number) => T): T[] {
+    const valuesArray = Array(length);
+    for (let i = 0; i < length; i++) {
+      valuesArray[i] = valueFunction(i);
+    }
+    return valuesArray;
   }
 
   private get shouldUseUtc(): boolean {
